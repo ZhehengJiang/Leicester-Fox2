@@ -1,0 +1,23 @@
+{
+    "conv_subsample_lengths": [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2],
+    "conv_filter_length": 16,
+    "conv_num_filters_start": 32,
+    "conv_init": "he_normal",
+    "conv_activation": "relu",
+    "conv_dropout": 0.2,
+    "conv_num_skip": 2,
+    "conv_increase_channels_at": 4,
+
+    "learning_rate": 0.001,
+    "batch_size": 8,
+    "num_categories": 37,
+    "mean": [-0.00324507, 0.02350578, 0.02409343, -0.00639095, -0.00823341, 0.01458235, -0.00406513, -0.04969472, -0.04283701, -0.01462474, -0.02237554, -0.02237136],
+    "std": [217.96239, 239.09802, 223.20758, 212.62752, 199.54993, 216.68001, 333.16763, 416.2715,  430.85336, 492.04312, 528.1512, 553.9074],
+
+    "train": "/home/x/Documents/pycharm/PhysioNetChallenge2020/examples/PNC2020/train.json",
+    "dev": "/home/x/Documents/pycharm/PhysioNetChallenge2020/examples/PNC2020/dev.json",
+
+    "generator": true,
+
+    "save_dir": "saved"
+}
