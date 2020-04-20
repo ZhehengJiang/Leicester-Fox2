@@ -34,7 +34,7 @@ def run_12ECG_classifier(data,header_data,classes,model):
     for i in range(len(pred_c_split)):
         current_label[class_to_int[pred_c_split[i]]] = 1
         current_score[class_to_int[pred_c_split[i]]] = np.max(pred_scores)
-    pred_l = np.argwhere(pred_scores[0,:]>0.5)
+    pred_l = np.argwhere(pred_scores[0,:]>0.2)
     if pred_l.size != 0:
         for ii in range(len(pred_l)):
             pred_c = net_classes[pred_l[ii][0]]
