@@ -24,7 +24,7 @@ def run_12ECG_classifier(data,header_data,classes,model):
     input_length = MAX_LEN
     if data.T.shape[0]>input_length:
         # input_length = int(data.T.shape[0]/256+1)*256
-        data = data[:,1:input_length]
+        data = data[:,0:input_length]
     input_data = np.zeros([1,input_length,data.T.shape[1]])
     input_data[0,0:data.T.shape[0],:] = data.T
     score = model.predict(input_data)
