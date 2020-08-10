@@ -96,7 +96,7 @@ def add_resnet_layers(layer, **params):
 def add_output_layer(layer, **params):
     from keras.layers.core import Dense, Activation
     from keras.layers.wrappers import TimeDistributed
-    layer = Bidirectional(CuDNNGRU(128,  return_sequences=True, return_state=False))(layer)
+    layer = Bidirectional(CuDNNGRU(64,  return_sequences=True, return_state=False))(layer)
     layer = TimeDistributed(Dense(params["num_categories"]))(layer)
     return Activation('softmax')(layer)
 
