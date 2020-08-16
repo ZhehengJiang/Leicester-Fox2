@@ -2,12 +2,14 @@
 
 import numpy as np
 import joblib
+import os
 import network
 import json
 from sklearn.preprocessing import normalize
+import pandas as pd
 from get_12ECG_features import get_12ECG_features
 MAX_LEN = 119808
-def run_12ECG_classifier(data,header_data,classes,model):
+def run_12ECG_classifier(data,header_data,model):
 
     with open('net_classes.txt', 'r') as result_file:
         net_classes = result_file.read().splitlines()
@@ -15,7 +17,15 @@ def run_12ECG_classifier(data,header_data,classes,model):
     #  'I-AVB,PAC', 'I-AVB,PVC', 'I-AVB,RBBB', 'I-AVB,STD', 'I-AVB,STE', 'LBBB', 'LBBB,PAC', 'LBBB,PVC', 'LBBB,STE',
     #  'Normal', 'PAC', 'PAC,PVC', 'PAC,STD', 'PAC,STE', 'PVC', 'PVC,STD', 'PVC,STE', 'RBBB', 'RBBB,PAC', 'RBBB,PAC,STE',
     #  'RBBB,PVC', 'RBBB,STD', 'RBBB,STE', 'STD', 'STD,STE', 'STE']
-
+    df = pd.read_csv('dx_mapping_scored.csv', sep=',')
+    codes = df.values[:,1].astype(np.str)
+    equivalent_classes = [['713427006', '59118001'], ['284470004', '63593006'], ['427172004', '17338001']]
+    index=[]
+    for i in range(len(codes)):
+        for j in range(len(equivalent_classes)):
+            if codes[i] == equivalent_classes[j][1]:
+                index.append(i)
+    classes = np.delete(codes, index)
     num_classes = len(classes)
     class_to_int = dict(zip(classes, range(num_classes)))
     current_label = np.zeros(num_classes, dtype=int)
@@ -49,17 +59,19 @@ def run_12ECG_classifier(data,header_data,classes,model):
     # for i in range(num_classes):
     #     current_score[class_to_int[pred_c_split[i]]] = np.max(pred_scores)
 
-    return current_label, current_score
+    return current_label, current_score, classes
 
-def load_12ECG_model():
+def load_12ECG_model(input_directory):
     # load the model from disk 
     filename = 'net_weights.h5'
     config_file = 'config.json'
-    params = json.load(open(config_file, 'r'))
+    config_filename = os.path.join(input_directory, config_file)
+    weight_filename = os.path.join(input_directory, filename)
+    params = json.load(open(config_filename, 'r'))
     params.update({
         "input_shape": [MAX_LEN, 12]
     })
     loaded_model = network.build_network(**params)
-    loaded_model.load_weights('net_weights.h5')
+    loaded_model.load_weights(weight_filename)
 
     return loaded_model
