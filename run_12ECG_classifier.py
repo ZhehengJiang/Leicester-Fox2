@@ -65,11 +65,9 @@ def run_12ECG_classifier(data,header_data,model):
 
 def load_12ECG_model(input_directory):
     # load the model from disk 
-    filename = 'net_weights.h5'
+    weight_filename = 'net_weights.h5'
     config_file = 'config.json'
-    config_filename = os.path.join(input_directory, config_file)
-    weight_filename = os.path.join(input_directory, filename)
-    params = json.load(open(config_filename, 'r'))
+    params = json.load(open(config_file, 'r'))
     df = pd.read_csv('dx_mapping_scored.csv', sep=',')
     codes = df.values[:,1].astype(np.str)
     equivalent_classes = [['713427006', '59118001'], ['284470004', '63593006'], ['427172004', '17338001']]
