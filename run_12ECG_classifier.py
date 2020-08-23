@@ -8,11 +8,12 @@ import json
 from sklearn.preprocessing import normalize
 import pandas as pd
 from get_12ECG_features import get_12ECG_features
-MAX_LEN = 119808
+# MAX_LEN = 119808
+# MAX_LEN = 71936
+MAX_LEN = 16384
+# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 def run_12ECG_classifier(data,header_data,model):
 
-    with open('net_classes.txt', 'r') as result_file:
-        net_classes = result_file.read().splitlines()
     # net_classes = ['AF', 'AF,LBBB', 'AF,LBBB,STD', 'AF,PAC', 'AF,PVC', 'AF,RBBB', 'AF,STD', 'AF,STE', 'I-AVB', 'I-AVB,LBBB',
     #  'I-AVB,PAC', 'I-AVB,PVC', 'I-AVB,RBBB', 'I-AVB,STD', 'I-AVB,STE', 'LBBB', 'LBBB,PAC', 'LBBB,PVC', 'LBBB,STE',
     #  'Normal', 'PAC', 'PAC,PVC', 'PAC,STD', 'PAC,STE', 'PVC', 'PVC,STD', 'PVC,STE', 'RBBB', 'RBBB,PAC', 'RBBB,PAC,STE',
@@ -26,6 +27,7 @@ def run_12ECG_classifier(data,header_data,model):
             if codes[i] == equivalent_classes[j][1]:
                 index.append(i)
     classes = np.delete(codes, index)
+    classes = np.append(classes, 'O')
     num_classes = len(classes)
     class_to_int = dict(zip(classes, range(num_classes)))
     current_label = np.zeros(num_classes, dtype=int)
@@ -42,7 +44,7 @@ def run_12ECG_classifier(data,header_data,model):
     pred_scores = pred_scores[:, 0:-1]
     pred_scores = normalize(pred_scores)
     pred_label = pred_scores.argmax(axis=1)
-    pred_c = net_classes[pred_label[0]]
+    pred_c = classes[pred_label[0]]
     pred_c_split = pred_c.split(',');
     for i in range(len(pred_c_split)):
         current_label[class_to_int[pred_c_split[i]]] = 1
@@ -50,7 +52,7 @@ def run_12ECG_classifier(data,header_data,model):
     pred_l = np.argwhere(pred_scores[0,:]>0.5)
     if pred_l.size != 0:
         for ii in range(len(pred_l)):
-            pred_c = net_classes[pred_l[ii][0]]
+            pred_c = classes[pred_l[ii][0]]
             pred_c_split = pred_c.split(',')
             for j in range(len(pred_c_split)):
                 current_label[class_to_int[pred_c_split[j]]] = 1
@@ -68,8 +70,22 @@ def load_12ECG_model(input_directory):
     config_filename = os.path.join(input_directory, config_file)
     weight_filename = os.path.join(input_directory, filename)
     params = json.load(open(config_filename, 'r'))
+    df = pd.read_csv('dx_mapping_scored.csv', sep=',')
+    codes = df.values[:,1].astype(np.str)
+    equivalent_classes = [['713427006', '59118001'], ['284470004', '63593006'], ['427172004', '17338001']]
+    index=[]
+    for i in range(len(codes)):
+        for j in range(len(equivalent_classes)):
+            if codes[i] == equivalent_classes[j][1]:
+                index.append(i)
+    codes = np.delete(codes, index)
+    codes = np.append(codes, 'O')
+    diag_matrix = np.identity(len(codes))
+    CPT = params['CPT']
     params.update({
-        "input_shape": [MAX_LEN, 12]
+        "input_shape": [MAX_LEN, 12],
+        "CPT": np.array(CPT),
+        "diag_matrix": diag_matrix
     })
     loaded_model = network.build_network(**params)
     loaded_model.load_weights(weight_filename)

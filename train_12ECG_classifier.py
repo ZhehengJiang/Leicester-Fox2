@@ -9,11 +9,12 @@ import load as load
 import network as network
 import json
 import keras
-MAX_EPOCHS = 100
-MAX_LEN = 119808
+MAX_EPOCHS = 1
+# MAX_LEN = 71936
+MAX_LEN = 16384
 STEP = 256
 from get_12ECG_features import get_12ECG_features
-
+# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 def train_12ECG_classifier(input_directory, output_directory):
 
     df = pd.read_csv('dx_mapping_scored.csv', sep=',')
@@ -26,7 +27,7 @@ def train_12ECG_classifier(input_directory, output_directory):
             if codes[i] == equivalent_classes[j][1]:
                 index.append(i)
     codes = np.delete(codes, index)
-    # codes = np.append(codes, 'O')
+    codes = np.append(codes, 'O')
     # Load data.
     print('Loading data...')
 
@@ -51,9 +52,8 @@ def train_12ECG_classifier(input_directory, output_directory):
             if l.startswith('#Dx:'):
                 labels_act = np.zeros(num_classes)
                 arrs = l.strip().split(' ')
-                for arr in arrs[1].split(','):
-                    num_labels = int(recording.shape[1] / STEP)
-                    labels_act = [arr.rstrip()]*num_labels # Only use first positive index
+                num_labels = int(recording.shape[1] / STEP)
+                labels_act = [arrs[1]]*num_labels
         labels.append(labels_act)
 
     array_len = np.array([i.shape[0] for i in recordings])
@@ -81,12 +81,28 @@ def train_12ECG_classifier(input_directory, output_directory):
     # Train model.
     print('Training model...')
     print("Building preprocessor...")
-    preproc = load.Preproc(recordings,labels)
+    preproc = load.Preproc(recordings,codes)
     config_file = 'config.json'
     params = json.load(open(config_file, 'r'))
+    CPT = np.zeros((len(codes), len(codes)))
+    diag_matrix = np.identity(len(codes))
+    gts = labels
+    for i in range(len(codes)-1):
+        num_all = 0
+        for n in range(len(gts)):
+            gt_split = gts[n][0].split(',')
+            if codes[i] in gt_split:
+                num_all = num_all + 1
+                for j in range(len(codes)-1):
+                    if i != j:
+                        if codes[j] in gt_split:
+                            CPT[i, j] = CPT[i, j] + 1
+        CPT[i, :] = CPT[i, :] / num_all
     params.update({
         "input_shape": [MAX_LEN, 12],
-        "num_categories": len(preproc.classes)+1
+        "num_categories": len(preproc.classes),
+        "CPT": CPT,
+        "diag_matrix": diag_matrix
     })
 
     model = network.build_network(**params)

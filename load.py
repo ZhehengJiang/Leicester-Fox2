@@ -8,10 +8,9 @@ import numpy as np
 import os
 import random
 import scipy.io as sio
-
-MAX_LEN = 119808
-#MAX_LEN = 71936
 STEP = 256
+# MAX_LEN =71936
+MAX_LEN = 16384
 
 def data_generator(batch_size, preproc, x, y):
     num_examples = len(x)
@@ -28,9 +27,10 @@ def data_generator(batch_size, preproc, x, y):
 
 class Preproc:
 
-    def __init__(self, ecg, labels):
+    def __init__(self, ecg, codes):
         self.mean, self.std = compute_mean_std(ecg)
-        self.classes = sorted(set(l for label in labels for l in label))
+        # self.classes = sorted(set(l for label in labels for l in label))
+        self.classes = codes
         self.int_to_class = dict( zip(range(len(self.classes)), self.classes))
         self.class_to_int = {c : i for i, c in self.int_to_class.items()}
 
@@ -45,14 +45,25 @@ class Preproc:
 
     def process_y(self, y):
         # TODO, awni, fix hack pad with noise for cinc
-        y = pad_y([[self.class_to_int[c] for c in s] for s in y], val=len(self.classes), dtype=np.int32)
-        y = keras.utils.np_utils.to_categorical(
-                y, num_classes=len(self.classes)+1)
-        return y
+
+        y = pad_y(y, val=self.classes[-1], dtype=np.dtype((str, 100)) )
+        multi_labels = [s[0] for s in y]
+        multi_labels = [s.strip().split(",") for s in multi_labels]
+        y_new = []
+        n=0
+        for labels in multi_labels:
+            targets=np.zeros((1,len(self.classes)))
+            for i in range(len(labels)):
+                l = keras.utils.np_utils.to_categorical(
+                        self.class_to_int[labels[i]], num_classes=len(self.classes))
+                targets = targets + l
+            y_new.append(np.repeat(targets,len(y[n]),axis=0))
+            n=n+1
+        return np.array(y_new)
 
 def pad_x(x, val=0, dtype=np.float32):
     # max_len = max(i.shape[0] for i in x)
-    max_len=MAX_LEN
+    max_len = MAX_LEN
     padded = np.full((len(x), max_len,x[0].shape[1]), val, dtype=dtype)
     for e, i in enumerate(x):
         padded[e, :len(i),:i.shape[1]] = i
@@ -71,7 +82,6 @@ def compute_mean_std(x):
     return (np.mean(x,axis=0).astype(np.float32),
            np.std(x,axis=0).astype(np.float32))
 
-
 def load_ecg(record):
     if os.path.splitext(record)[1] == ".npy":
         ecg = np.load(record)
@@ -80,7 +90,6 @@ def load_ecg(record):
     else: # Assumes binary 16 bit integers
         with open(record, 'r') as fid:
             ecg = np.fromfile(fid, dtype=np.int16)
-
     trunc_samp = STEP * int(ecg.shape[0] / STEP)
     return ecg[:trunc_samp,:]
 
